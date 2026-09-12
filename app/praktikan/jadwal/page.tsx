@@ -22,11 +22,10 @@ export default function PraktikanJadwalPage() {
     const { data: profile } = await supabase.from("profiles").select("nama").eq("id", userData.user.id).single();
     setNama(profile?.nama || "");
 
-    const { data: anggota, error: anggotaError } = await supabase
+    const { data: anggota } = await supabase
       .from("anggota_kelas")
       .select("kelas_praktikum(id, nama_mata_kuliah, nama_kelas)")
       .eq("praktikan_id", userData.user.id);
-    if (anggotaError) console.error("Gagal muat anggota_kelas (praktikan):", anggotaError);
 
     const kelas = (anggota || []).map((a: any) => a.kelas_praktikum).filter(Boolean);
     setKelasList(kelas);
@@ -41,8 +40,7 @@ export default function PraktikanJadwalPage() {
   useEffect(() => {
     if (!kelasId) return;
     (async () => {
-      const { data, error } = await supabase.from("jadwal_praktikum").select("id, pertemuan_ke, topik, tanggal, jam_mulai, jam_selesai").eq("kelas_id", kelasId).order("pertemuan_ke");
-      if (error) console.error("Gagal muat jadwal (praktikan):", error);
+      const { data } = await supabase.from("jadwal_praktikum").select("id, pertemuan_ke, topik, tanggal, jam_mulai, jam_selesai").eq("kelas_id", kelasId).order("pertemuan_ke");
       setJadwalList(data || []);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -54,29 +52,14 @@ export default function PraktikanJadwalPage() {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return;
 
-    // Pakai RPC (bukan select langsung ke kelas_praktikum) karena RLS memblokir
-    // select tabel itu sebelum user resmi jadi anggota kelas.
-    const { data: kelasRows, error: rpcError } = await supabase.rpc("cari_kelas_by_kode", {
-      p_kode: kodeJoin.trim().toUpperCase(),
-    });
-    if (rpcError) {
-      console.error("Gagal panggil cari_kelas_by_kode:", rpcError);
-      setPesan("Error RPC: " + rpcError.message);
-      return;
-    }
-    const kelas = kelasRows?.[0];
+    const { data: kelas } = await supabase.from("kelas_praktikum").select("id").eq("kode_kelas", kodeJoin.trim().toUpperCase()).maybeSingle();
     if (!kelas) {
       setPesan("Kode kelas tidak ditemukan.");
       return;
     }
     const { error } = await supabase.from("anggota_kelas").insert({ kelas_id: kelas.id, praktikan_id: userData.user.id });
     if (error) {
-      console.error("Gagal join kelas:", error);
-      setPesan(
-        error.code === "23505"
-          ? "Kamu sudah tergabung di kelas ini."
-          : `Gagal join kelas: ${error.message}`
-      );
+      setPesan("Kamu sudah tergabung di kelas ini.");
     } else {
       setPesan("Berhasil join kelas!");
       setKodeJoin("");
@@ -88,30 +71,30 @@ export default function PraktikanJadwalPage() {
     <div>
       <Navbar role="praktikan" nama={nama} />
       <main className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-lg font-semibold text-slate-900 mb-4">Jadwal Praktikum</h1>
+        <h1 className="page-title mb-4">Jadwal Praktikum</h1>
 
-        <form onSubmit={joinKelas} className="bg-white border border-slate-200 rounded-xl p-4 mb-6 flex gap-2 items-start">
-          <input className="border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Masukkan kode kelas dari asisten" value={kodeJoin} onChange={(e) => setKodeJoin(e.target.value)} />
-          <button className="bg-slate-900 text-white rounded-lg px-4 py-2 text-sm font-medium whitespace-nowrap">Join Kelas</button>
+        <form onSubmit={joinKelas} className="surface p-4 mb-6 flex gap-2 items-start">
+          <input className="field" placeholder="Masukkan kode kelas dari asisten" value={kodeJoin} onChange={(e) => setKodeJoin(e.target.value)} />
+          <button className="btn-primary whitespace-nowrap">Join Kelas</button>
         </form>
-        {pesan && <p className="text-xs text-slate-500 mb-4 -mt-4">{pesan}</p>}
+        {pesan && <p className="text-xs text-white/50 mb-4 -mt-4">{pesan}</p>}
 
         {kelasList.length === 0 ? (
-          <p className="text-sm text-slate-400">Kamu belum tergabung di kelas praktikum manapun.</p>
+          <p className="text-sm text-white/35">Kamu belum tergabung di kelas praktikum manapun.</p>
         ) : (
           <>
-            <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm mb-6" value={kelasId} onChange={(e) => setKelasId(e.target.value)}>
+            <select className="field mb-6" value={kelasId} onChange={(e) => setKelasId(e.target.value)}>
               {kelasList.map((k) => (
                 <option key={k.id} value={k.id}>{k.nama_mata_kuliah} - {k.nama_kelas}</option>
               ))}
             </select>
 
-            <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100">
-              {jadwalList.length === 0 && <p className="text-sm text-slate-400 p-4">Belum ada jadwal.</p>}
+            <div className="surface divide-y divide-white/[0.06]">
+              {jadwalList.length === 0 && <p className="text-sm text-white/35 p-4">Belum ada jadwal.</p>}
               {jadwalList.map((j) => (
                 <div key={j.id} className="p-4">
-                  <p className="font-medium text-slate-900 text-sm">Pertemuan {j.pertemuan_ke}: {j.topik}</p>
-                  <p className="text-xs text-slate-500">{j.tanggal} · {j.jam_mulai.slice(0,5)}–{j.jam_selesai.slice(0,5)}</p>
+                  <p className="font-medium text-white text-sm">Pertemuan {j.pertemuan_ke}: {j.topik}</p>
+                  <p className="text-xs text-white/50">{j.tanggal} · {j.jam_mulai.slice(0,5)}–{j.jam_selesai.slice(0,5)}</p>
                 </div>
               ))}
             </div>

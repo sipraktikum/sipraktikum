@@ -2,7 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  color-scheme: dark;
+}
+
 body {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: theme("colors.ink");
+  color: #F3F2EE;
+}
+
+@layer components {
+  /* surfaces */
+  .surface {
+    @apply bg-surface border border-white/[0.08] rounded-2xl;
+  }
+
+  /* buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-gradient-to-r from-accent1 to-accent2 text-ink font-semibold hover:brightness-110;
+  }
+  .btn-ghost {
+    @apply btn border border-white/[0.14] text-white/75 bg-transparent hover:border-white/30 hover:text-white;
+  }
+  .btn-danger-ghost {
+    @apply text-xs text-rose-300/80 hover:text-rose-300 hover:underline;
+  }
+
+  /* forms */
+  .field {
+    @apply w-full rounded-xl border border-white/[0.1] bg-white/[0.04] px-3.5 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/30 transition;
+  }
+  .field-label {
+    @apply text-xs font-medium text-white/45;
+  }
+
+  /* text */
+  .page-title {
+    @apply font-display text-2xl font-medium tracking-tight text-white;
+  }
+  .page-subtitle {
+    @apply text-sm text-white/50;
+  }
+  .empty-note {
+    @apply text-sm text-white/35;
+  }
+
+  /* badges (status pills) */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+  .badge-neutral {
+    @apply badge bg-white/[0.06] text-white/40;
+  }
+  .badge-good {
+    @apply badge bg-emerald-400/10 text-emerald-300;
+  }
+  .badge-warn {
+    @apply badge bg-amber-400/10 text-amber-300;
+  }
+  .badge-bad {
+    @apply badge bg-rose-400/10 text-rose-300;
+  }
+  .badge-mono {
+    @apply badge font-mono bg-white/[0.06] text-white/60 tracking-wide;
+  }
+
+  /* nav pills */
+  .pill-link {
+    @apply rounded-full px-3 py-1.5 text-sm text-white/55 hover:text-white hover:bg-white/[0.06] transition whitespace-nowrap;
+  }
+  .pill-link-active {
+    @apply rounded-full px-3 py-1.5 text-sm text-ink bg-gradient-to-r from-accent1 to-accent2 font-medium whitespace-nowrap;
+  }
+
+  .link-accent {
+    @apply text-sky-300/90 underline decoration-white/20 underline-offset-2 hover:text-sky-200;
+  }
 }

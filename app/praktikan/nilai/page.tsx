@@ -74,27 +74,27 @@ export default function PraktikanNilaiPage() {
     <div>
       <Navbar role="praktikan" nama={nama} />
       <main className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-lg font-semibold text-slate-900 mb-4">Nilai</h1>
+        <h1 className="page-title mb-4">Nilai</h1>
 
         {kelasList.length === 0 ? (
-          <p className="text-sm text-slate-400">Kamu belum tergabung di kelas praktikum manapun.</p>
+          <p className="text-sm text-white/35">Kamu belum tergabung di kelas praktikum manapun.</p>
         ) : (
           <>
-            <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm mb-6" value={kelasId} onChange={(e) => setKelasId(e.target.value)}>
+            <select className="field mb-6" value={kelasId} onChange={(e) => setKelasId(e.target.value)}>
               {kelasList.map((k) => (
                 <option key={k.id} value={k.id}>{k.nama_mata_kuliah} - {k.nama_kelas}</option>
               ))}
             </select>
 
-            <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 mb-4">
-              {baris.length === 0 && <p className="text-sm text-slate-400 p-4">Belum ada tugas di kelas ini.</p>}
+            <div className="surface divide-y divide-white/[0.06] mb-4">
+              {baris.length === 0 && <p className="text-sm text-white/35 p-4">Belum ada tugas di kelas ini.</p>}
               {baris.map((r, i) => (
                 <div key={i} className="p-4 flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-slate-900 text-sm">{r.judul}</p>
-                    <p className="text-xs text-slate-500">Bobot {r.bobot_nilai}</p>
+                    <p className="font-medium text-white text-sm">{r.judul}</p>
+                    <p className="text-xs text-white/50">Bobot {r.bobot_nilai}</p>
                   </div>
-                  <span className="text-sm font-semibold text-slate-900">
+                  <span className="text-sm font-semibold text-white">
                     {r.nilai != null ? r.nilai : "Belum dinilai"}
                   </span>
                 </div>
@@ -102,8 +102,8 @@ export default function PraktikanNilaiPage() {
             </div>
 
             {rataRata != null && (
-              <div className="bg-slate-900 text-white rounded-xl p-4 flex items-center justify-between">
-                <span className="text-sm">Rata-rata nilai (tertimbang bobot)</span>
+              <div className="rounded-2xl p-4 flex items-center justify-between bg-gradient-to-r from-accent1 to-accent2 text-ink">
+                <span className="text-sm font-medium">Rata-rata nilai (tertimbang bobot)</span>
                 <span className="text-lg font-semibold">{rataRata}</span>
               </div>
             )}

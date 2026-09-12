@@ -94,15 +94,15 @@ export default function AbsensiPage() {
     <div>
       <Navbar role="asisten" nama={nama} />
       <main className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-lg font-semibold text-slate-900 mb-4">Absensi</h1>
+        <h1 className="page-title mb-4">Absensi</h1>
 
         <div className="flex flex-wrap gap-2 mb-6">
-          <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm" value={kelasId} onChange={(e) => setKelasId(e.target.value)}>
+          <select className="field" value={kelasId} onChange={(e) => setKelasId(e.target.value)}>
             {kelasList.map((k) => (
               <option key={k.id} value={k.id}>{k.nama_mata_kuliah} - {k.nama_kelas}</option>
             ))}
           </select>
-          <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm" value={jadwalId} onChange={(e) => setJadwalId(e.target.value)}>
+          <select className="field" value={jadwalId} onChange={(e) => setJadwalId(e.target.value)}>
             {jadwalList.length === 0 && <option value="">Belum ada jadwal</option>}
             {jadwalList.map((j) => (
               <option key={j.id} value={j.id}>Pertemuan {j.pertemuan_ke}: {j.topik}</option>
@@ -110,16 +110,16 @@ export default function AbsensiPage() {
           </select>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100">
-          {baris.length === 0 && <p className="text-sm text-slate-400 p-4">Belum ada praktikan di kelas ini.</p>}
+        <div className="surface divide-y divide-white/[0.06]">
+          {baris.length === 0 && <p className="text-sm text-white/35 p-4">Belum ada praktikan di kelas ini.</p>}
           {baris.map((row) => (
             <div key={row.praktikan_id} className="p-4 flex items-center justify-between gap-3">
               <div>
-                <p className="font-medium text-slate-900 text-sm">{row.nama}</p>
-                <p className="text-xs text-slate-500">{row.npm}</p>
+                <p className="font-medium text-white text-sm">{row.nama}</p>
+                <p className="text-xs text-white/50">{row.npm}</p>
               </div>
               <select
-                className="border border-slate-200 rounded-lg px-2 py-1 text-sm"
+                className="field text-xs py-1.5"
                 value={row.status}
                 onChange={(e) => ubahStatus(row, e.target.value)}
               >

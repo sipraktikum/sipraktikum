@@ -73,33 +73,33 @@ export default function TugasPage() {
     <div>
       <Navbar role="asisten" nama={nama} />
       <main className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-lg font-semibold text-slate-900 mb-4">Tugas Praktikum</h1>
+        <h1 className="page-title mb-4">Tugas Praktikum</h1>
 
-        <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm mb-6" value={kelasId} onChange={(e) => setKelasId(e.target.value)}>
+        <select className="field mb-6" value={kelasId} onChange={(e) => setKelasId(e.target.value)}>
           {kelasList.map((k) => (
             <option key={k.id} value={k.id}>{k.nama_mata_kuliah} - {k.nama_kelas}</option>
           ))}
         </select>
 
-        <form onSubmit={tambahTugas} className="bg-white border border-slate-200 rounded-xl p-4 mb-6 space-y-2">
-          <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Judul tugas" value={judul} onChange={(e) => setJudul(e.target.value)} required />
-          <textarea className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Deskripsi/instruksi tugas" value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} rows={2} />
+        <form onSubmit={tambahTugas} className="surface p-4 mb-6 space-y-2">
+          <input className="w-full field" placeholder="Judul tugas" value={judul} onChange={(e) => setJudul(e.target.value)} required />
+          <textarea className="w-full field" placeholder="Deskripsi/instruksi tugas" value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} rows={2} />
           <div className="flex gap-2">
-            <input type="datetime-local" className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm" value={deadline} onChange={(e) => setDeadline(e.target.value)} required />
-            <input type="number" className="w-28 border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Bobot" value={bobot} onChange={(e) => setBobot(Number(e.target.value))} />
+            <input type="datetime-local" className="flex-1 field" value={deadline} onChange={(e) => setDeadline(e.target.value)} required />
+            <input type="number" className="w-28 field" placeholder="Bobot" value={bobot} onChange={(e) => setBobot(Number(e.target.value))} />
           </div>
-          <button className="bg-slate-900 text-white rounded-lg px-4 py-2 text-sm font-medium">+ Tambah Tugas</button>
+          <button className="btn-primary">+ Tambah Tugas</button>
         </form>
 
-        <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100">
-          {tugasList.length === 0 && <p className="text-sm text-slate-400 p-4">Belum ada tugas.</p>}
+        <div className="surface divide-y divide-white/[0.06]">
+          {tugasList.length === 0 && <p className="text-sm text-white/35 p-4">Belum ada tugas.</p>}
           {tugasList.map((t) => (
             <div key={t.id} className="p-4 flex items-center justify-between">
               <div>
-                <p className="font-medium text-slate-900 text-sm">{t.judul}</p>
-                <p className="text-xs text-slate-500">Deadline: {new Date(t.deadline).toLocaleString("id-ID")} · Bobot {t.bobot_nilai}</p>
+                <p className="font-medium text-white text-sm">{t.judul}</p>
+                <p className="text-xs text-white/50">Deadline: {new Date(t.deadline).toLocaleString("id-ID")} · Bobot {t.bobot_nilai}</p>
               </div>
-              <button onClick={() => hapusTugas(t.id)} className="text-xs text-red-500 hover:underline">Hapus</button>
+              <button onClick={() => hapusTugas(t.id)} className="btn-danger-ghost">Hapus</button>
             </div>
           ))}
         </div>

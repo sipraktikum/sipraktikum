@@ -11,11 +11,11 @@ type Riwayat = {
 };
 
 const WARNA: Record<string, string> = {
-  hadir: "text-green-600 bg-green-50",
-  izin: "text-amber-600 bg-amber-50",
-  sakit: "text-amber-600 bg-amber-50",
-  alpa: "text-red-600 bg-red-50",
-  belum: "text-slate-400 bg-slate-50",
+  hadir: "badge-good",
+  izin: "badge-warn",
+  sakit: "badge-warn",
+  alpa: "badge-bad",
+  belum: "badge-neutral",
 };
 
 export default function PraktikanAbsensiPage() {
@@ -43,18 +43,18 @@ export default function PraktikanAbsensiPage() {
     <div>
       <Navbar role="praktikan" nama={nama} />
       <main className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-lg font-semibold text-slate-900 mb-4">Riwayat Absensi</h1>
-        <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100">
-          {riwayat.length === 0 && <p className="text-sm text-slate-400 p-4">Belum ada data absensi.</p>}
+        <h1 className="page-title mb-4">Riwayat Absensi</h1>
+        <div className="surface divide-y divide-white/[0.06]">
+          {riwayat.length === 0 && <p className="text-sm text-white/35 p-4">Belum ada data absensi.</p>}
           {riwayat.map((r, i) => (
             <div key={i} className="p-4 flex items-center justify-between">
               <div>
-                <p className="font-medium text-slate-900 text-sm">
+                <p className="font-medium text-white text-sm">
                   Pertemuan {r.jadwal_praktikum?.pertemuan_ke}: {r.jadwal_praktikum?.topik}
                 </p>
-                <p className="text-xs text-slate-500">{r.jadwal_praktikum?.tanggal}</p>
+                <p className="text-xs text-white/50">{r.jadwal_praktikum?.tanggal}</p>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-full font-medium ${WARNA[r.status] || WARNA.belum}`}>
+              <span className={WARNA[r.status] || WARNA.belum}>
                 {r.status}
               </span>
             </div>
