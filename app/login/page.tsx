@@ -62,13 +62,15 @@ export default function LoginPage() {
       return;
     }
 
-    // Kalau praktikan mengisi kode kelas, langsung daftarkan ke kelas tersebut
+    // Kalau praktikan mengisi kode kelas, langsung daftarkan ke kelas tersebut.
+    // Pakai RPC (bukan select langsung ke kelas_praktikum) karena RLS memblokir
+    // select tabel itu sebelum user resmi jadi anggota kelas.
     if (role === "praktikan" && kodeKelas.trim() && data.user) {
-      const { data: kelas, error: kelasError } = await supabase
-        .from("kelas_praktikum")
-        .select("id")
-        .eq("kode_kelas", kodeKelas.trim().toUpperCase())
-        .maybeSingle();
+      const { data: kelasRows, error: kelasError } = await supabase.rpc(
+        "cari_kelas_by_kode",
+        { p_kode: kodeKelas.trim().toUpperCase() }
+      );
+      const kelas = kelasRows?.[0];
 
       if (kelasError) console.error("Gagal cari kelas:", kelasError);
 
