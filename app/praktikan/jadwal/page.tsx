@@ -54,7 +54,17 @@ export default function PraktikanJadwalPage() {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return;
 
-    const { data: kelas } = await supabase.from("kelas_praktikum").select("id").eq("kode_kelas", kodeJoin.trim().toUpperCase()).maybeSingle();
+    // Pakai RPC (bukan select langsung ke kelas_praktikum) karena RLS memblokir
+    // select tabel itu sebelum user resmi jadi anggota kelas.
+    const { data: kelasRows, error: rpcError } = await supabase.rpc("cari_kelas_by_kode", {
+      p_kode: kodeJoin.trim().toUpperCase(),
+    });
+    if (rpcError) {
+      console.error("Gagal panggil cari_kelas_by_kode:", rpcError);
+      setPesan("Error RPC: " + rpcError.message);
+      return;
+    }
+    const kelas = kelasRows?.[0];
     if (!kelas) {
       setPesan("Kode kelas tidak ditemukan.");
       return;
