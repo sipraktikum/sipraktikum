@@ -20,12 +20,14 @@ export default function Navbar({
     { href: "/asisten/jadwal", label: "Jadwal" },
     { href: "/asisten/absensi", label: "Absensi" },
     { href: "/asisten/tugas", label: "Tugas" },
+    { href: "/asisten/tes", label: "Bank Soal" },
     { href: "/asisten/nilai", label: "Nilai" },
   ];
   const praktikanLinks = [
     { href: "/praktikan/jadwal", label: "Jadwal" },
     { href: "/praktikan/absensi", label: "Absensi" },
     { href: "/praktikan/tugas", label: "Tugas" },
+    { href: "/praktikan/tes", label: "Tes" },
     { href: "/praktikan/nilai", label: "Nilai" },
   ];
 

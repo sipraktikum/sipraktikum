@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 
 type Kelas = { id: string; nama_mata_kuliah: string; nama_kelas: string };
 type Baris = { judul: string; bobot_nilai: number; nilai: number | null };
+type BarisTes = { jadwalLabel: string; pretest: number | null; posttest: number | null };
 
 export default function PraktikanNilaiPage() {
   const supabase = createClient();
@@ -13,6 +14,7 @@ export default function PraktikanNilaiPage() {
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
   const [kelasId, setKelasId] = useState("");
   const [baris, setBaris] = useState<Baris[]>([]);
+  const [barisTes, setBarisTes] = useState<BarisTes[]>([]);
   const [rataRata, setRataRata] = useState<number | null>(null);
 
   useEffect(() => {
@@ -66,6 +68,49 @@ export default function PraktikanNilaiPage() {
       } else {
         setRataRata(null);
       }
+
+      // --- Pretest & Posttest ---
+      const { data: jadwal } = await supabase
+        .from("jadwal_praktikum")
+        .select("id, pertemuan_ke, topik")
+        .eq("kelas_id", kelasId)
+        .order("pertemuan_ke");
+
+      const jadwalIds = (jadwal || []).map((j) => j.id);
+      let tesRows: BarisTes[] = [];
+      if (jadwalIds.length > 0) {
+        const { data: tes } = await supabase
+          .from("tes_praktikum")
+          .select("id, jadwal_id, jenis")
+          .in("jadwal_id", jadwalIds);
+
+        const tesIds = (tes || []).map((t) => t.id);
+        let submissions: any[] = [];
+        if (tesIds.length > 0) {
+          const { data: sub } = await supabase
+            .from("tes_submission")
+            .select("tes_id, skor")
+            .in("tes_id", tesIds)
+            .eq("praktikan_id", userData.user.id);
+          submissions = sub || [];
+        }
+        const skorMap = new Map(submissions.map((s) => [s.tes_id, s.skor]));
+
+        tesRows = (jadwal || [])
+          .map((j) => {
+            const pre = (tes || []).find((t) => t.jadwal_id === j.id && t.jenis === "pretest");
+            const post = (tes || []).find((t) => t.jadwal_id === j.id && t.jenis === "posttest");
+            return {
+              jadwalLabel: `Pertemuan ${j.pertemuan_ke}: ${j.topik}`,
+              pretest: pre ? skorMap.get(pre.id) ?? null : null,
+              posttest: post ? skorMap.get(post.id) ?? null : null,
+              adaPretest: !!pre,
+              adaPosttest: !!post,
+            };
+          })
+          .filter((r: any) => r.adaPretest || r.adaPosttest);
+      }
+      setBarisTes(tesRows);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kelasId]);
@@ -100,6 +145,27 @@ export default function PraktikanNilaiPage() {
                 </div>
               ))}
             </div>
+
+            {barisTes.length > 0 && (
+              <>
+                <h2 className="text-sm font-medium text-white/70 mb-2 mt-8">Pretest & Posttest</h2>
+                <div className="surface divide-y divide-white/[0.06] mb-4">
+                  {barisTes.map((r, i) => (
+                    <div key={i} className="p-4 flex items-center justify-between gap-3">
+                      <p className="font-medium text-white text-sm">{r.jadwalLabel}</p>
+                      <div className="flex gap-2 shrink-0">
+                        <span className={r.pretest != null ? "badge-good" : "badge-neutral"}>
+                          Pretest {r.pretest != null ? r.pretest : "-"}
+                        </span>
+                        <span className={r.posttest != null ? "badge-good" : "badge-neutral"}>
+                          Posttest {r.posttest != null ? r.posttest : "-"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
 
             {rataRata != null && (
               <div className="rounded-2xl p-4 flex items-center justify-between bg-gradient-to-r from-accent1 to-accent2 text-ink">
