@@ -22,6 +22,7 @@ export default function Navbar({
     { href: "/asisten/tugas", label: "Tugas" },
     { href: "/asisten/tes", label: "Bank Soal" },
     { href: "/asisten/nilai", label: "Nilai" },
+    { href: "/asisten/review-jawaban", label: "Review" },
   ];
   const praktikanLinks = [
     { href: "/praktikan/jadwal", label: "Jadwal" },
