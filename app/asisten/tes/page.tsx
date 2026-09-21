@@ -16,9 +16,14 @@ type Soal = {
   pilihan_d: string | null;
   jawaban_benar: string;
   poin: number;
+  waktu_detik: number;
 };
 type Tes = { id: string; jenis: "pretest" | "posttest"; judul: string; dibuka: boolean } | null;
 type HasilRow = { praktikan_id: string; nama: string; npm: string; skor: number | null; submit_at: string | null };
+
+const WAKTU_DEFAULT = 60;
+const WAKTU_MIN = 5;
+const WAKTU_MAKS = 3600;
 
 export default function AsistenTesPage() {
   const supabase = createClient();
@@ -38,6 +43,7 @@ export default function AsistenTesPage() {
   const [pilihanD, setPilihanD] = useState("");
   const [jawabanBenar, setJawabanBenar] = useState("");
   const [poin, setPoin] = useState(10);
+  const [waktuDetik, setWaktuDetik] = useState(WAKTU_DEFAULT);
 
   // --- Atur Tes ---
   const [jadwalList, setJadwalList] = useState<Jadwal[]>([]);
@@ -101,7 +107,7 @@ export default function AsistenTesPage() {
   async function muatSoal() {
     const { data } = await supabase
       .from("bank_soal")
-      .select("id, tipe, pertanyaan, pilihan_a, pilihan_b, pilihan_c, pilihan_d, jawaban_benar, poin")
+      .select("id, tipe, pertanyaan, pilihan_a, pilihan_b, pilihan_c, pilihan_d, jawaban_benar, poin, waktu_detik")
       .eq("kelas_id", kelasId)
       .order("created_at");
     setSoalList(data || []);
@@ -179,8 +185,14 @@ export default function AsistenTesPage() {
       pilihan_d: tipe === "pilihan_ganda" ? pilihanD : null,
       jawaban_benar: jawabanBenar,
       poin,
+      waktu_detik: waktuDetik,
     });
-    setPertanyaan(""); setPilihanA(""); setPilihanB(""); setPilihanC(""); setPilihanD(""); setJawabanBenar(""); setPoin(10);
+    setPertanyaan(""); setPilihanA(""); setPilihanB(""); setPilihanC(""); setPilihanD(""); setJawabanBenar(""); setPoin(10); setWaktuDetik(WAKTU_DEFAULT);
+    muatSoal();
+  }
+
+  async function ubahWaktu(id: string, detik: number) {
+    await supabase.from("bank_soal").update({ waktu_detik: detik }).eq("id", id);
     muatSoal();
   }
 
@@ -243,12 +255,26 @@ export default function AsistenTesPage() {
         {tab === "bank" && (
           <>
             <form onSubmit={tambahSoal} className="surface p-4 mb-6 space-y-2">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <select className="field w-48" value={tipe} onChange={(e) => setTipe(e.target.value as any)}>
                   <option value="pilihan_ganda">Pilihan ganda</option>
                   <option value="isian_singkat">Isian singkat</option>
                 </select>
                 <input type="number" className="w-24 field" placeholder="Poin" value={poin} onChange={(e) => setPoin(Number(e.target.value))} />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    className="w-24 field"
+                    placeholder="Waktu"
+                    title="Waktu pengerjaan soal ini (detik)"
+                    min={WAKTU_MIN}
+                    max={WAKTU_MAKS}
+                    value={waktuDetik}
+                    onChange={(e) => setWaktuDetik(Number(e.target.value))}
+                    required
+                  />
+                  <span className="text-xs text-white/40">detik / soal</span>
+                </div>
               </div>
               <textarea className="w-full field" placeholder="Tulis pertanyaan" value={pertanyaan} onChange={(e) => setPertanyaan(e.target.value)} rows={2} required />
 
@@ -293,7 +319,32 @@ export default function AsistenTesPage() {
                       {" "}· Jawaban: <span className="text-white/70">{s.jawaban_benar}</span> · {s.poin} poin
                     </p>
                   </div>
-                  <button onClick={() => hapusSoal(s.id)} className="btn-danger-ghost">Hapus</button>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <label className="flex items-center gap-1.5 text-xs text-white/50">
+                      <input
+                        key={`${s.id}-${s.waktu_detik}`}
+                        type="number"
+                        className="field w-20 text-xs"
+                        title="Waktu pengerjaan soal ini (detik). Tekan Enter atau klik di luar untuk menyimpan."
+                        min={WAKTU_MIN}
+                        max={WAKTU_MAKS}
+                        defaultValue={s.waktu_detik}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.currentTarget.blur();
+                        }}
+                        onBlur={(e) => {
+                          const v = Number(e.target.value);
+                          if (!Number.isInteger(v) || v < WAKTU_MIN || v > WAKTU_MAKS) {
+                            e.target.value = String(s.waktu_detik);
+                            return;
+                          }
+                          if (v !== s.waktu_detik) ubahWaktu(s.id, v);
+                        }}
+                      />
+                      detik
+                    </label>
+                    <button onClick={() => hapusSoal(s.id)} className="btn-danger-ghost">Hapus</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -341,7 +392,7 @@ export default function AsistenTesPage() {
                                 checked={selected.has(s.id)}
                                 onChange={(e) => toggleSoalTes(tes, s.id, e.target.checked)}
                               />
-                              <span>{s.pertanyaan} <span className="text-white/35">({s.poin} poin)</span></span>
+                              <span>{s.pertanyaan} <span className="text-white/35">({s.poin} poin · {s.waktu_detik} detik)</span></span>
                             </label>
                           ))}
                         </div>

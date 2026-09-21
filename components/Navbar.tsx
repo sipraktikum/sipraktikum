@@ -30,6 +30,7 @@ export default function Navbar({
     { href: "/praktikan/tugas", label: "Tugas" },
     { href: "/praktikan/tes", label: "Tes" },
     { href: "/praktikan/nilai", label: "Nilai" },
+    { href: "/praktikan/aanvullen", label: "Aanvullen" },
   ];
 
   const links = role === "asisten" ? asistenLinks : praktikanLinks;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Navbar from "@/components/Navbar";
 
@@ -17,6 +17,7 @@ type Soal = {
   pilihan_c: string | null;
   pilihan_d: string | null;
   poin: number;
+  waktu_detik: number;
 };
 type DetailSoal = {
   soal_id: string;
@@ -27,6 +28,14 @@ type DetailSoal = {
   poin_didapat: number;
   poin_maks: number;
 };
+
+const WAKTU_CADANGAN = 60;
+
+function formatWaktu(detik: number) {
+  const m = Math.floor(detik / 60);
+  const s = detik % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
 
 export default function PraktikanTesPage() {
   const supabase = createClient();
@@ -43,6 +52,13 @@ export default function PraktikanTesPage() {
   const [soalList, setSoalList] = useState<Soal[]>([]);
   const [jawaban, setJawaban] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // --- Pewaktu per soal ---
+  const [idx, setIdx] = useState(0); // nomor soal yang sedang tampil (mulai dari 0)
+  const [sisa, setSisa] = useState(0); // sisa detik untuk soal yang sedang tampil
+  const deadlineRef = useRef(0); // waktu (ms) kapan soal ini habis
+  const sedangKirimRef = useRef(false); // penjaga supaya jawaban tidak terkirim dua kali
+  const lanjutRef = useRef<() => void>(() => {});
 
   const [hasilSkor, setHasilSkor] = useState<number | null>(null);
   const [hasilDetail, setHasilDetail] = useState<DetailSoal[]>([]);
@@ -71,6 +87,27 @@ export default function PraktikanTesPage() {
     muatSemua();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kelasId]);
+
+  // Fungsi "lanjut" selalu diperbarui supaya pewaktu memakai jawaban terbaru
+  useEffect(() => {
+    lanjutRef.current = lanjut;
+  });
+
+  // Pewaktu: cek tiap 250 ms berdasarkan jam sebenarnya (tidak melambat kalau tab di background)
+  useEffect(() => {
+    if (mode !== "taking") return;
+    let sudahHabis = false;
+    const timer = setInterval(() => {
+      const s = Math.max(0, Math.ceil((deadlineRef.current - Date.now()) / 1000));
+      setSisa(s);
+      if (s <= 0 && !sudahHabis) {
+        sudahHabis = true;
+        clearInterval(timer);
+        lanjutRef.current();
+      }
+    }, 250);
+    return () => clearInterval(timer);
+  }, [mode, idx]);
 
   async function muatSemua() {
     const { data: userData } = await supabase.auth.getUser();
@@ -115,28 +152,62 @@ export default function PraktikanTesPage() {
     setTestsMap(map);
   }
 
+  // Menampilkan soal ke-i dan menyalakan waktunya
+  function mulaiSoal(i: number, list: Soal[]) {
+    const detik = Math.max(1, Number(list[i]?.waktu_detik) || WAKTU_CADANGAN);
+    deadlineRef.current = Date.now() + detik * 1000;
+    setIdx(i);
+    setSisa(detik);
+  }
+
   async function mulaiTes(tes: TesInfo, label: string) {
     if (!tes) return;
+    const yakin = window.confirm(
+      "Tes akan dimulai dan waktu langsung berjalan.\n\n" +
+        "Setiap soal punya batas waktu sendiri. Kalau waktu habis, kamu otomatis pindah ke soal berikutnya, " +
+        "dan soal yang sudah lewat tidak bisa dibuka lagi.\n\nMulai sekarang?"
+    );
+    if (!yakin) return;
+
     setError(null);
     const { data, error } = await supabase.rpc("ambil_soal_tes", { p_tes_id: tes.id });
     if (error) {
       setError(error.message);
       return;
     }
-    setSoalList(data || []);
+    const soal: Soal[] = data || [];
+    if (soal.length === 0) {
+      setError("Tes ini belum punya soal.");
+      return;
+    }
+    sedangKirimRef.current = false;
+    setSoalList(soal);
     setJawaban({});
     setActiveTesId(tes.id);
     setActiveLabel(label);
+    mulaiSoal(0, soal);
     setMode("taking");
   }
 
+  // Dipanggil tombol "Lanjut" atau otomatis saat waktu soal habis
+  function lanjut() {
+    if (idx < soalList.length - 1) {
+      mulaiSoal(idx + 1, soalList);
+    } else {
+      submitTes();
+    }
+  }
+
   async function submitTes() {
+    if (sedangKirimRef.current) return;
+    sedangKirimRef.current = true;
     setSubmitting(true);
     setError(null);
     const payload = soalList.map((s) => ({ soal_id: s.soal_id, jawaban: jawaban[s.soal_id] || "" }));
     const { data, error } = await supabase.rpc("submit_tes", { p_tes_id: activeTesId, p_jawaban: payload });
     setSubmitting(false);
     if (error) {
+      sedangKirimRef.current = false;
       setError(error.message);
       return;
     }
@@ -184,6 +255,11 @@ export default function PraktikanTesPage() {
     );
   }
 
+  const soalAktif = mode === "taking" ? soalList[idx] : undefined;
+  const totalWaktu = soalAktif ? Math.max(1, Number(soalAktif.waktu_detik) || WAKTU_CADANGAN) : 1;
+  const waktuHabis = sisa <= 0;
+  const soalTerakhir = idx === soalList.length - 1;
+
   return (
     <div>
       <Navbar role="praktikan" nama={nama} />
@@ -225,51 +301,71 @@ export default function PraktikanTesPage() {
           </>
         )}
 
-        {mode === "taking" && (
+        {mode === "taking" && soalAktif && (
           <div className="surface p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-medium text-white text-sm">{activeLabel}</h2>
-              <button onClick={kembali} className="pill-link">Batal</button>
+              <div>
+                <h2 className="font-medium text-white text-sm">{activeLabel}</h2>
+                <p className="text-xs text-white/50 mt-0.5">Soal {idx + 1} dari {soalList.length}</p>
+              </div>
+              <div className="text-right">
+                <p className={`text-2xl font-medium tabular-nums ${sisa <= 10 ? "text-rose-300" : "text-white"}`}>
+                  {formatWaktu(sisa)}
+                </p>
+                <p className="text-xs text-white/35">sisa waktu</p>
+              </div>
+            </div>
+
+            <div className="h-1 w-full rounded-full bg-white/10 mb-6 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-accent1 to-accent2 transition-[width] duration-300 ease-linear"
+                style={{ width: `${Math.min(100, (sisa / totalWaktu) * 100)}%` }}
+              />
             </div>
 
             {error && <p className="text-xs text-rose-300/90 mb-4">{error}</p>}
 
-            <div className="space-y-5">
-              {soalList.map((s, i) => (
-                <div key={s.soal_id}>
-                  <p className="text-sm text-white mb-2">{i + 1}. {s.pertanyaan} <span className="text-white/35 text-xs">({s.poin} poin)</span></p>
-                  {s.tipe === "pilihan_ganda" ? (
-                    <div className="space-y-1.5">
-                      {[["a", s.pilihan_a], ["b", s.pilihan_b], ["c", s.pilihan_c], ["d", s.pilihan_d]]
-                        .filter(([, v]) => v)
-                        .map(([key, val]) => (
-                          <label key={key} className="flex items-center gap-2 text-sm text-white/70">
-                            <input
-                              type="radio"
-                              name={s.soal_id}
-                              value={key as string}
-                              checked={jawaban[s.soal_id] === key}
-                              onChange={() => setJawaban((prev) => ({ ...prev, [s.soal_id]: key as string }))}
-                            />
-                            {(key as string).toUpperCase()}. {val}
-                          </label>
-                        ))}
-                    </div>
-                  ) : (
-                    <input
-                      className="field"
-                      placeholder="Ketik jawabanmu"
-                      value={jawaban[s.soal_id] || ""}
-                      onChange={(e) => setJawaban((prev) => ({ ...prev, [s.soal_id]: e.target.value }))}
-                    />
-                  )}
+            <div key={soalAktif.soal_id}>
+              <p className="text-sm text-white mb-2">
+                {idx + 1}. {soalAktif.pertanyaan} <span className="text-white/35 text-xs">({soalAktif.poin} poin)</span>
+              </p>
+              {soalAktif.tipe === "pilihan_ganda" ? (
+                <div className="space-y-1.5">
+                  {[["a", soalAktif.pilihan_a], ["b", soalAktif.pilihan_b], ["c", soalAktif.pilihan_c], ["d", soalAktif.pilihan_d]]
+                    .filter(([, v]) => v)
+                    .map(([key, val]) => (
+                      <label key={key} className="flex items-center gap-2 text-sm text-white/70">
+                        <input
+                          type="radio"
+                          name={soalAktif.soal_id}
+                          value={key as string}
+                          disabled={waktuHabis}
+                          checked={jawaban[soalAktif.soal_id] === key}
+                          onChange={() => setJawaban((prev) => ({ ...prev, [soalAktif.soal_id]: key as string }))}
+                        />
+                        {(key as string).toUpperCase()}. {val}
+                      </label>
+                    ))}
                 </div>
-              ))}
+              ) : (
+                <input
+                  className="field"
+                  placeholder="Ketik jawabanmu"
+                  autoFocus
+                  disabled={waktuHabis}
+                  value={jawaban[soalAktif.soal_id] || ""}
+                  onChange={(e) => setJawaban((prev) => ({ ...prev, [soalAktif.soal_id]: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") lanjut();
+                  }}
+                />
+              )}
             </div>
 
-            <button onClick={submitTes} disabled={submitting} className="btn-primary mt-6">
-              {submitting ? "Mengirim..." : "Kumpulkan Jawaban"}
+            <button onClick={lanjut} disabled={submitting} className="btn-primary mt-6">
+              {submitting ? "Mengirim..." : soalTerakhir ? "Kumpulkan Jawaban" : "Lanjut"}
             </button>
+            <p className="text-xs text-white/35 mt-3">Soal yang sudah lewat tidak bisa dibuka lagi.</p>
           </div>
         )}
 
