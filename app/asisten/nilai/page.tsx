@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import Navbar from "@/components/Navbar";
 
@@ -266,6 +267,9 @@ export default function NilaiPage() {
                       {row.npm} · status: {row.status}
                       {row.file_url && (
                         <> · <a href={row.file_url} target="_blank" className="link-accent">lihat file</a></>
+                      )}
+                      {row.file_url && row.pengumpulan_id && (
+                        <> · <Link href={`/asisten/tugas/koreksi/${row.pengumpulan_id}`} className="link-accent">koreksi</Link></>
                       )}
                     </p>
                   </div>

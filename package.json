@@ -13,8 +13,10 @@
     "@supabase/supabase-js": "^2.45.4",
     "jspdf": "^4.2.1",
     "next": "14.2.15",
+    "pdfjs-dist": "4.4.168",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "react-pdf-highlighter-extended": "^8.1.0"
   },
   "devDependencies": {
     "@types/node": "^20",
