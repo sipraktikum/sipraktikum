@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import Navbar from "@/components/Navbar";
 
@@ -152,7 +153,7 @@ export default function PraktikanTugasPage() {
                   )}
                 </div>
 
-                <div className="mt-3 flex items-center gap-3">
+                <div className="mt-3 flex flex-wrap items-center gap-3">
                   <label className={`text-xs px-3 py-1.5 rounded-full border cursor-pointer transition ${uploading === t.id ? "opacity-50 border-white/10 text-white/50" : "border-white/15 text-white/75 hover:border-white/30 hover:text-white"}`}>
                     {uploading === t.id ? "Mengunggah..." : p?.file_url ? "Ganti file" : "Upload file"}
                     <input
@@ -167,6 +168,14 @@ export default function PraktikanTugasPage() {
                   </label>
                   {p?.file_url && (
                     <a href={p.file_url} target="_blank" className="link-accent text-xs">Lihat file terkumpul</a>
+                  )}
+                  {p?.file_url && (
+                    <Link
+                      href={`/praktikan/tugas/koreksi/${p.id}`}
+                      className="link-accent text-xs"
+                    >
+                      Lihat hasil koreksi
+                    </Link>
                   )}
                   {p && (
                     <span className={p.status === "terlambat" ? "badge-bad" : "badge-good"}>

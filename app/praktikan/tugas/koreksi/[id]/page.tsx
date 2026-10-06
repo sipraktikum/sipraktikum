@@ -1,6 +1,5 @@
 "use client";
 
-import { use } from "react";
 import dynamic from "next/dynamic";
 
 const KoreksiViewer = dynamic(() => import("@/components/KoreksiViewer"), {
@@ -8,7 +7,6 @@ const KoreksiViewer = dynamic(() => import("@/components/KoreksiViewer"), {
   loading: () => <p className="p-8 text-sm text-white/50">Memuat...</p>,
 });
 
-export default function Page({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  return <KoreksiViewer pengumpulanId={id} mode="praktikan" />;
+export default function Page({ params }: { params: { id: string } }) {
+  return <KoreksiViewer pengumpulanId={params.id} mode="praktikan" />;
 }
