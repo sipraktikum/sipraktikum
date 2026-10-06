@@ -5,6 +5,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import Navbar from "@/components/Navbar";
 
+const MAKS_UKURAN_MB = 10;
+
 type Kelas = { id: string; nama_mata_kuliah: string; nama_kelas: string };
 type Tugas = {
   id: string;
@@ -30,6 +32,7 @@ export default function PraktikanTugasPage() {
   const [kelasId, setKelasId] = useState("");
   const [tugasList, setTugasList] = useState<Tugas[]>([]);
   const [pengumpulanMap, setPengumpulanMap] = useState<Record<string, Pengumpulan>>({});
+  const [jumlahKomentar, setJumlahKomentar] = useState<Record<string, number>>({});
   const [uploading, setUploading] = useState<string | null>(null);
   const [pesan, setPesan] = useState<string | null>(null);
 
@@ -70,6 +73,20 @@ export default function PraktikanTugasPage() {
     const map: Record<string, Pengumpulan> = {};
     (pengumpulan || []).forEach((p) => { map[p.tugas_id] = p; });
     setPengumpulanMap(map);
+
+    // hitung komentar per pengumpulan (untuk mengunci "Ganti file")
+    const ids = (pengumpulan || []).map((p) => p.id);
+    const hitung: Record<string, number> = {};
+    if (ids.length > 0) {
+      const { data: komentar } = await supabase
+        .from("komentar_pdf")
+        .select("pengumpulan_id")
+        .in("pengumpulan_id", ids);
+      (komentar || []).forEach((k: any) => {
+        hitung[k.pengumpulan_id] = (hitung[k.pengumpulan_id] || 0) + 1;
+      });
+    }
+    setJumlahKomentar(hitung);
   }
 
   useEffect(() => {
@@ -78,8 +95,24 @@ export default function PraktikanTugasPage() {
   }, [kelasId, userId]);
 
   async function kumpulkanTugas(tugas: Tugas, file: File) {
-    setUploading(tugas.id);
     setPesan(null);
+
+    if (file.type !== "application/pdf") {
+      setPesan("File harus berformat PDF.");
+      return;
+    }
+    if (file.size > MAKS_UKURAN_MB * 1024 * 1024) {
+      setPesan(`Ukuran file maksimal ${MAKS_UKURAN_MB} MB.`);
+      return;
+    }
+
+    const existing = pengumpulanMap[tugas.id];
+    if (existing && (jumlahKomentar[existing.id] || 0) > 0) {
+      setPesan("File tidak bisa diganti karena asisten sudah memberi komentar.");
+      return;
+    }
+
+    setUploading(tugas.id);
     const path = `${userId}/${tugas.id}-${Date.now()}-${file.name}`;
     const { error: uploadError } = await supabase.storage.from("tugas-praktikum").upload(path, file);
 
@@ -92,7 +125,6 @@ export default function PraktikanTugasPage() {
     const { data: publicUrl } = supabase.storage.from("tugas-praktikum").getPublicUrl(path);
     const status = new Date() > new Date(tugas.deadline) ? "terlambat" : "tepat_waktu";
 
-    const existing = pengumpulanMap[tugas.id];
     if (existing) {
       await supabase.from("pengumpulan_tugas").update({
         file_url: publicUrl.publicUrl,
@@ -138,6 +170,7 @@ export default function PraktikanTugasPage() {
           {tugasList.map((t) => {
             const p = pengumpulanMap[t.id];
             const lewatDeadline = new Date() > new Date(t.deadline);
+            const terkunci = !!p && (jumlahKomentar[p.id] || 0) > 0;
             return (
               <div key={t.id} className="surface p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -154,18 +187,26 @@ export default function PraktikanTugasPage() {
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <label className={`text-xs px-3 py-1.5 rounded-full border cursor-pointer transition ${uploading === t.id ? "opacity-50 border-white/10 text-white/50" : "border-white/15 text-white/75 hover:border-white/30 hover:text-white"}`}>
-                    {uploading === t.id ? "Mengunggah..." : p?.file_url ? "Ganti file" : "Upload file"}
-                    <input
-                      type="file"
-                      className="hidden"
-                      disabled={uploading === t.id}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) kumpulkanTugas(t, file);
-                      }}
-                    />
-                  </label>
+                  {terkunci ? (
+                    <span className="text-xs text-white/40">
+                      File terkunci karena sudah ada komentar asisten
+                    </span>
+                  ) : (
+                    <label className={`text-xs px-3 py-1.5 rounded-full border cursor-pointer transition ${uploading === t.id ? "opacity-50 border-white/10 text-white/50" : "border-white/15 text-white/75 hover:border-white/30 hover:text-white"}`}>
+                      {uploading === t.id ? "Mengunggah..." : p?.file_url ? "Ganti file" : "Upload file (PDF)"}
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        className="hidden"
+                        disabled={uploading === t.id}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) kumpulkanTugas(t, file);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  )}
                   {p?.file_url && (
                     <a href={p.file_url} target="_blank" className="link-accent text-xs">Lihat file terkumpul</a>
                   )}

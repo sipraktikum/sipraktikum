@@ -25,9 +25,21 @@ type Komentar = {
   dibuat_pada: string;
 };
 
-function HighlightContainer() {
+function HighlightContainer({
+  aktifId,
+  onKlik,
+}: {
+  aktifId: string | null;
+  onKlik: (id: string) => void;
+}) {
   const { highlight, isScrolledTo } = useHighlightContainerContext();
-  return <TextHighlight highlight={highlight} isScrolledTo={isScrolledTo} />;
+  return (
+    <TextHighlight
+      highlight={highlight}
+      isScrolledTo={isScrolledTo || highlight.id === aktifId}
+      onClick={() => onKlik(highlight.id)}
+    />
+  );
 }
 
 export default function KoreksiViewer({
@@ -39,6 +51,7 @@ export default function KoreksiViewer({
 }) {
   const [supabase] = useState(() => createClient());
   const utilsRef = useRef<PdfHighlighterUtils | null>(null);
+  const kartuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const [nama, setNama] = useState("");
   const [userId, setUserId] = useState("");
@@ -50,6 +63,7 @@ export default function KoreksiViewer({
   const [pending, setPending] = useState<GhostHighlight | null>(null);
   const [teksBaru, setTeksBaru] = useState("");
   const [balasan, setBalasan] = useState<Record<string, string>>({});
+  const [aktifId, setAktifId] = useState<string | null>(null);
 
   const muat = useCallback(async () => {
     const { data, error } = await supabase
@@ -78,6 +92,10 @@ export default function KoreksiViewer({
         setError(e?.message || "Pengumpulan tidak ditemukan");
         return;
       }
+      if (mode === "praktikan" && u.user && p.praktikan_id !== u.user.id) {
+        setError("Kamu tidak punya akses ke koreksi ini.");
+        return;
+      }
       setPraktikanId(p.praktikan_id);
       setFileUrl(p.file_url);
       muat();
@@ -94,7 +112,7 @@ export default function KoreksiViewer({
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [supabase, pengumpulanId, muat]);
+  }, [supabase, pengumpulanId, muat, mode]);
 
   const roots = komentar.filter((k) => !k.parent_id);
   const balasanDari = (id: string) => komentar.filter((k) => k.parent_id === id);
@@ -111,6 +129,24 @@ export default function KoreksiViewer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [komentar]
   );
+
+  // Saat highlight di PDF diklik: tandai komentarnya & gulir panel ke kartunya
+  function klikHighlight(id: string) {
+    setAktifId(id);
+    setPending(null);
+  }
+
+  useEffect(() => {
+    if (!aktifId) return;
+    kartuRefs.current[aktifId]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [aktifId]);
+
+  // Saat kutipan di panel diklik: tandai & gulir PDF ke highlight-nya
+  function klikKutipan(k: Komentar) {
+    if (!k.posisi) return;
+    setAktifId(k.id);
+    utilsRef.current?.scrollToHighlight(toHighlight(k));
+  }
 
   async function simpanKomentar() {
     if (!pending || !teksBaru.trim()) return;
@@ -153,6 +189,7 @@ export default function KoreksiViewer({
   async function hapus(id: string) {
     if (!confirm("Hapus komentar ini?")) return;
     await supabase.from("komentar_pdf").delete().eq("id", id);
+    if (aktifId === id) setAktifId(null);
     muat();
   }
 
@@ -165,9 +202,13 @@ export default function KoreksiViewer({
         <h1 className="page-title mb-1">
           {mode === "asisten" ? "Koreksi Tugas" : "Hasil Koreksi"}
         </h1>
-        {mode === "asisten" && (
+        {mode === "asisten" ? (
           <p className="text-xs text-white/50 mb-4">
             Blok (seleksi) teks di PDF, lalu tulis komentar di panel kanan.
+          </p>
+        ) : (
+          <p className="text-xs text-white/50 mb-4">
+            Klik bagian PDF yang ter-highlight untuk melihat komentar asisten.
           </p>
         )}
         {error && <p className="text-sm text-red-400 mb-3">{error}</p>}
@@ -188,7 +229,7 @@ export default function KoreksiViewer({
                       mode === "asisten" ? (sel) => setPending(sel.makeGhostHighlight()) : undefined
                     }
                   >
-                    <HighlightContainer />
+                    <HighlightContainer aktifId={aktifId} onKlik={klikHighlight} />
                   </PdfHighlighter>
                 )}
               </PdfLoader>
@@ -224,7 +265,15 @@ export default function KoreksiViewer({
             )}
 
             {roots.map((k) => (
-              <div key={k.id} className={`surface p-3 space-y-2 ${k.status === "resolved" ? "opacity-60" : ""}`}>
+              <div
+                key={k.id}
+                ref={(el) => {
+                  kartuRefs.current[k.id] = el;
+                }}
+                className={`surface p-3 space-y-2 transition ${
+                  k.status === "resolved" ? "opacity-60" : ""
+                } ${aktifId === k.id ? "ring-2 ring-white/50" : ""}`}
+              >
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-white/50">
                     {label(k.dibuat_oleh)} · hal. {k.halaman ?? "-"}
@@ -237,7 +286,7 @@ export default function KoreksiViewer({
                 {k.teks_terseleksi && (
                   <button
                     className="text-left text-xs text-white/60 italic line-clamp-2"
-                    onClick={() => k.posisi && utilsRef.current?.scrollToHighlight(toHighlight(k))}
+                    onClick={() => klikKutipan(k)}
                   >
                     &ldquo;{k.teks_terseleksi}&rdquo;
                   </button>
